@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { ACTIVITIES, getCategory, STAFF, SUCURSALES, SHIFTS, EVALUATION_TYPES, AFFECTED_AREAS, RECOMMENDATIONS } from '@/lib/constants';
 import { calculateCompliance } from '@/lib/calculations';
 import { Evaluation } from '@/lib/types';
+import { saveEvaluation } from '@/services/evaluationService';
 import { AlertCircle, CheckCircle2, Save, Send } from 'lucide-react';
 
 export const EvaluationForm: React.FC = () => {
@@ -73,11 +74,41 @@ export const EvaluationForm: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      // Here we would save to Firebase
-      console.log('Saving evaluation:', { ...formData, compliancePercentage: percentage, category });
+      const finalEvaluation: Omit<Evaluation, 'id' | 'timestamp'> = {
+        date: formData.date || new Date().toISOString().split('T')[0],
+        sucursal: formData.sucursal || '',
+        evaluator: formData.evaluator || '',
+        evaluated: formData.evaluated || '',
+        shift: formData.shift || '',
+        type: formData.type || 'Diaria',
+        assignedActivities: formData.assignedActivities || 'Sí',
+        contextObservation: formData.contextObservation || '',
+        scores: formData.scores || {},
+        observations: formData.observations || {},
+        strengths: formData.strengths || '',
+        weaknesses: formData.weaknesses || '',
+        requiresFollowUp: formData.requiresFollowUp || false,
+        requiresTraining: formData.requiresTraining || false,
+        requiresImprovementPlan: formData.requiresImprovementPlan || false,
+        affectedAreas: formData.affectedAreas || [],
+        finalRecommendation: formData.finalRecommendation || '',
+        compliancePercentage: percentage,
+        category,
+      };
+
+      await saveEvaluation(finalEvaluation);
       toast.success('Evaluación guardada exitosamente');
-      // Reset form or redirect
+      
+      // Reset form
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        scores: {},
+        observations: {},
+        affectedAreas: [],
+        type: 'Diaria'
+      });
     } catch (error) {
+      console.error(error);
       toast.error('Error al guardar la evaluación');
     } finally {
       setIsSubmitting(false);
@@ -104,7 +135,7 @@ export const EvaluationForm: React.FC = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="sucursal">Sucursal</Label>
-            <Select onValueChange={val => setFormData(prev => ({ ...prev, sucursal: val }))}>
+            <Select value={formData.sucursal || ''} onValueChange={val => setFormData(prev => ({ ...prev, sucursal: val }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar sucursal" />
               </SelectTrigger>
@@ -115,7 +146,7 @@ export const EvaluationForm: React.FC = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="evaluator">Evaluador / Aprobador</Label>
-            <Select onValueChange={val => setFormData(prev => ({ ...prev, evaluator: val }))}>
+            <Select value={formData.evaluator || ''} onValueChange={val => setFormData(prev => ({ ...prev, evaluator: val }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar evaluador" />
               </SelectTrigger>
@@ -126,7 +157,7 @@ export const EvaluationForm: React.FC = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="evaluated">Persona Evaluada</Label>
-            <Select onValueChange={val => setFormData(prev => ({ ...prev, evaluated: val }))}>
+            <Select value={formData.evaluated || ''} onValueChange={val => setFormData(prev => ({ ...prev, evaluated: val }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar persona" />
               </SelectTrigger>
@@ -137,7 +168,7 @@ export const EvaluationForm: React.FC = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="shift">Turno</Label>
-            <Select onValueChange={val => setFormData(prev => ({ ...prev, shift: val }))}>
+            <Select value={formData.shift || ''} onValueChange={val => setFormData(prev => ({ ...prev, shift: val }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar turno" />
               </SelectTrigger>
@@ -191,7 +222,7 @@ export const EvaluationForm: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Label className="sr-only">Puntaje</Label>
-                    <Select onValueChange={(val: string) => handleScoreChange(activity.id, val)}>
+                    <Select value={formData.scores?.[activity.id]?.toString() || ''} onValueChange={(val: string) => handleScoreChange(activity.id, val)}>
                       <SelectTrigger className="w-[100px]">
                         <SelectValue placeholder="Nota" />
                       </SelectTrigger>
@@ -209,6 +240,7 @@ export const EvaluationForm: React.FC = () => {
                   <Input 
                     id={`obs-${activity.id}`}
                     placeholder="Detalles adicionales..."
+                    value={formData.observations?.[activity.id] || ''}
                     onChange={e => handleObservationChange(activity.id, e.target.value)}
                   />
                 </div>
@@ -230,6 +262,7 @@ export const EvaluationForm: React.FC = () => {
               <Textarea 
                 id="strengths" 
                 placeholder="¿Qué hizo bien?"
+                value={formData.strengths || ''}
                 onChange={e => setFormData(prev => ({ ...prev, strengths: e.target.value }))}
               />
             </div>
@@ -238,6 +271,7 @@ export const EvaluationForm: React.FC = () => {
               <Textarea 
                 id="weaknesses" 
                 placeholder="¿Qué debe mejorar?"
+                value={formData.weaknesses || ''}
                 onChange={e => setFormData(prev => ({ ...prev, weaknesses: e.target.value }))}
               />
             </div>
@@ -250,6 +284,7 @@ export const EvaluationForm: React.FC = () => {
                 <div key={area} className="flex items-center space-x-2">
                   <Checkbox 
                     id={area} 
+                    checked={formData.affectedAreas?.includes(area) || false}
                     onCheckedChange={() => handleAreaToggle(area)}
                   />
                   <label 
@@ -265,7 +300,7 @@ export const EvaluationForm: React.FC = () => {
 
           <div className="space-y-2">
             <Label htmlFor="recommendation">Recomendación Final</Label>
-            <Select onValueChange={val => setFormData(prev => ({ ...prev, finalRecommendation: val }))}>
+            <Select value={formData.finalRecommendation || ''} onValueChange={val => setFormData(prev => ({ ...prev, finalRecommendation: val }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar recomendación" />
               </SelectTrigger>
