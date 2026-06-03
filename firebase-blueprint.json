@@ -1,0 +1,36 @@
+{
+  "entities": {
+    "Evaluation": {
+      "title": "Evaluation",
+      "description": "Store personnel activity evaluation record",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "sucursal": { "type": "string" },
+        "evaluator": { "type": "string" },
+        "evaluated": { "type": "string" },
+        "shift": { "type": "string" },
+        "type": { "type": "string", "enum": ["Diaria", "Semanal", "Mensual"] },
+        "assignedActivities": { "type": "string", "enum": ["Sí", "Parcialmente", "No"] },
+        "contextObservation": { "type": "string" },
+        "scores": { "type": "object" },
+        "observations": { "type": "object" },
+        "strengths": { "type": "string" },
+        "weaknesses": { "type": "string" },
+        "requiresFollowUp": { "type": "boolean" },
+        "affectedAreas": { "type": "array", "items": { "type": "string" } },
+        "finalRecommendation": { "type": "string" },
+        "compliancePercentage": { "type": "number" },
+        "category": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "sucursal", "evaluator", "evaluated", "type", "scores", "compliancePercentage"]
+    }
+  },
+  "firestore": {
+    "/evaluations/{evaluationId}": {
+      "schema": "Evaluation",
+      "description": "Collection of all evaluations"
+    }
+  }
+}
