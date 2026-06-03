@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { auth, isFirebaseEnabled } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,27 @@ export const EvaluationForm: React.FC = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let email = '';
+    if (isFirebaseEnabled && auth?.currentUser) {
+      email = auth.currentUser.email || '';
+    } else {
+      const localUser = localStorage.getItem('demo_user');
+      if (localUser) {
+        email = JSON.parse(localUser).email || '';
+      }
+    }
+
+    if (email) {
+      const prefix = email.split('@')[0];
+      const evaluatorName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+      setFormData(prev => ({
+        ...prev,
+        evaluator: evaluatorName
+      }));
+    }
+  }, []);
 
   const filteredActivities = ACTIVITIES.filter(a => a.frequency === formData.type);
 
@@ -99,14 +121,15 @@ export const EvaluationForm: React.FC = () => {
       await saveEvaluation(finalEvaluation);
       toast.success('Evaluación guardada exitosamente');
       
-      // Reset form
-      setFormData({
+      // Reset form but preserve evaluator
+      setFormData(prev => ({
         date: new Date().toISOString().split('T')[0],
         scores: {},
         observations: {},
         affectedAreas: [],
-        type: 'Diaria'
-      });
+        type: 'Diaria',
+        evaluator: prev.evaluator
+      }));
     } catch (error) {
       console.error(error);
       toast.error('Error al guardar la evaluación');
@@ -146,14 +169,12 @@ export const EvaluationForm: React.FC = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="evaluator">Evaluador / Aprobador</Label>
-            <Select value={formData.evaluator || ''} onValueChange={val => setFormData(prev => ({ ...prev, evaluator: val }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar evaluador" />
-              </SelectTrigger>
-              <SelectContent>
-                {STAFF.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Input 
+              id="evaluator"
+              value={formData.evaluator || ''}
+              disabled
+              className="bg-[#f0f0f0] cursor-not-allowed font-medium text-black"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="evaluated">Persona Evaluada</Label>
